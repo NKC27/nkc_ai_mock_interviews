@@ -29,7 +29,7 @@ const Page = () => {
 
       <section className="flex flex-col mt-8 gap-6">
         <h2>Your Interviews</h2>
-        <div className="interview-section">
+        <div className="interviews-section">
           {dummyInterviews.length > 0 ? (
             dummyInterviews.map((interview, index) => (
               <InterviewCard key={`your-${index}`} {...interview} />
@@ -44,8 +44,8 @@ const Page = () => {
         <h2>Take an interview</h2>
         <div className="interviews-section">
           {dummyInterviews.length > 0 ? (
-            dummyInterviews.map((interview, index) => (
-              <InterviewCard key={`take-${index}`} {...interview} />
+            dummyInterviews.map((interview) => (
+              <InterviewCard {...interview} key={interview.id} />
             ))
           ) : (
             <p>No interviews available</p>
