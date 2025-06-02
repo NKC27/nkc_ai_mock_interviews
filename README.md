@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Interview Prep
 
-## Getting Started
+**AI-Powered Interview Practice Platform**
 
-First, run the development server:
+![Interview Prep Screenshot](./public/Screenshot%202025-06-02%20at%2022.13.42.png)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🚀 Overview
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Interview Prep is a cutting-edge platform that helps job seekers prepare for interviews using AI-powered practice sessions.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Key features:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Realistic interview simulations for various roles
+- Instant feedback on your responses
+- Performance tracking over time
+- Multiple interview types in one place
 
-## Learn More
+## 🌐 Live Demo
 
-To learn more about Next.js, take a look at the following resources:
+Experience Interview Prep live: [https://nkc-ai-mock-interviews.vercel.app/](https://nkc-ai-mock-interviews.vercel.app/)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ✨ Features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Role-Specific Interviews** - Practice with questions tailored to specific job roles
+- **Performance Tracking** - View your interview history and progress
+- **AI Feedback** - Get instant analysis of your responses
+- **User-Friendly Interface** - Clean, intuitive design for seamless practice
 
-## Deploy on Vercel
+## 🛠️ Technologies Used
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Core Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js (with Turbopack)
+- React
+- TypeScript
+- Tailwind CSS
+- Firebase (Authentication & Database)
+
+### AI Integration
+
+- AI SDK
+- Google AI
+- Vapi AI
+
+### UI Components & Utilities
+
+- Radix UI
+- Lucide React
+- Tailwind Merge
+- Tailwind Animate
+- Sonner (Toasts)
+- clsx
+- Zod (Validation)
+- React Hook Form
+
+## 🏁 Getting Started
+
+### Prerequisites
+
+- Node.js
+- npm
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
