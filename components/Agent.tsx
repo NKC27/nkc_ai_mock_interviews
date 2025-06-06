@@ -11,6 +11,7 @@ import { createFeedback } from '@/lib/actions/general.action';
 
 enum CallStatus {
   INACTIVE = 'INACTIVE',
+  REQUESTING_PERMISSION = 'REQUESTING_PERMISSION',
   CONNECTING = 'CONNECTING',
   ACTIVE = 'ACTIVE',
   FINISHED = 'FINISHED',
@@ -19,6 +20,22 @@ enum CallStatus {
 interface SavedMessage {
   role: 'user' | 'system' | 'assistant';
   content: string;
+}
+
+interface Message {
+  type: string;
+  transcriptType?: string;
+  role: 'user' | 'system' | 'assistant';
+  transcript: string;
+}
+
+interface AgentProps {
+  userName: string;
+  userId: string;
+  interviewId?: string;
+  feedbackId?: string;
+  type: 'generate' | 'feedback';
+  questions?: string[];
 }
 
 const Agent = ({
@@ -34,10 +51,23 @@ const Agent = ({
   const [messages, setMessages] = useState<SavedMessage[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+
+  // Check for secure context on component mount
+  useEffect(() => {
+    if (
+      window.location.protocol !== 'https:' &&
+      window.location.hostname !== 'localhost'
+    ) {
+      console.warn('Media devices may not work properly without HTTPS');
+      setError('For best results, please use HTTPS or localhost');
+    }
+  }, []);
 
   useEffect(() => {
     const onCallStart = () => {
       setCallStatus(CallStatus.ACTIVE);
+      setError(null);
     };
 
     const onCallEnd = () => {
@@ -52,17 +82,17 @@ const Agent = ({
     };
 
     const onSpeechStart = () => {
-      console.log('speech start');
       setIsSpeaking(true);
     };
 
     const onSpeechEnd = () => {
-      console.log('speech end');
       setIsSpeaking(false);
     };
 
     const onError = (error: Error) => {
-      console.log('Error:', error);
+      console.error('VAPI Error:', error);
+      setError('Connection error. Please try again.');
+      setCallStatus(CallStatus.INACTIVE);
     };
 
     vapi.on('call-start', onCallStart);
@@ -88,20 +118,23 @@ const Agent = ({
     }
 
     const handleGenerateFeedback = async (messages: SavedMessage[]) => {
-      console.log('handleGenerateFeedback');
+      try {
+        const { success, feedbackId: id } = await createFeedback({
+          interviewId: interviewId!,
+          userId: userId!,
+          transcript: messages,
+          feedbackId,
+        });
 
-      const { success, feedbackId: id } = await createFeedback({
-        interviewId: interviewId!,
-        userId: userId!,
-        transcript: messages,
-        feedbackId,
-      });
-
-      if (success && id) {
-        router.push(`/interview/${interviewId}/feedback`);
-      } else {
-        console.log('Error saving feedback');
-        router.push('/');
+        if (success && id) {
+          router.push(`/interview/${interviewId}/feedback`);
+        } else {
+          setError('Failed to save feedback');
+          router.push('/');
+        }
+      } catch (err) {
+        setError('Error saving feedback');
+        console.error(err);
       }
     };
 
@@ -114,35 +147,60 @@ const Agent = ({
     }
   }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
 
-  const handleCall = async () => {
-    setCallStatus(CallStatus.CONNECTING);
+  const requestMediaPermissions = async (): Promise<boolean> => {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Media devices API not available');
+      }
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      return true;
+    } catch (err) {
+      console.error('Permission error:', err);
+      setError('Microphone access is required. Please allow permissions.');
+      return false;
+    }
+  };
 
-    if (type === 'generate') {
-      await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
-        variableValues: {
-          username: userName,
-          userid: userId,
-        },
-      });
-    } else {
-      let formattedQuestions = '';
-      if (questions) {
-        formattedQuestions = questions
-          .map((question) => `- ${question}`)
-          .join('\n');
+  const handleCall = async () => {
+    try {
+      setCallStatus(CallStatus.REQUESTING_PERMISSION);
+      setError(null);
+
+      const hasPermission = await requestMediaPermissions();
+      if (!hasPermission) {
+        setCallStatus(CallStatus.INACTIVE);
+        return;
       }
 
-      await vapi.start(interviewer, {
-        variableValues: {
-          questions: formattedQuestions,
-        },
-      });
+      setCallStatus(CallStatus.CONNECTING);
+
+      if (type === 'generate') {
+        await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
+          variableValues: {
+            username: userName,
+            userid: userId,
+          },
+        });
+      } else {
+        const formattedQuestions =
+          questions?.map((q) => `- ${q}`).join('\n') || '';
+        await vapi.start(interviewer, {
+          variableValues: {
+            questions: formattedQuestions,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Call failed:', error);
+      setError('Failed to start call. Please try again.');
+      setCallStatus(CallStatus.INACTIVE);
     }
   };
 
   const handleDisconnect = () => {
-    setCallStatus(CallStatus.FINISHED);
     vapi.stop();
+    setCallStatus(CallStatus.FINISHED);
+    setError(null);
   };
 
   return (
@@ -153,10 +211,11 @@ const Agent = ({
           <div className="avatar">
             <Image
               src="/ai-avatar.png"
-              alt="profile-image"
+              alt="AI Interviewer"
               width={65}
               height={54}
               className="object-cover"
+              priority
             />
             {isSpeaking && <span className="animate-speak" />}
           </div>
@@ -168,10 +227,11 @@ const Agent = ({
           <div className="card-content">
             <Image
               src="/user-avatar.png"
-              alt="profile-image"
+              alt="User Profile"
               width={539}
               height={539}
               className="rounded-full object-cover size-[120px]"
+              priority
             />
             <h3>{userName}</h3>
           </div>
@@ -194,25 +254,50 @@ const Agent = ({
         </div>
       )}
 
-      <div className="w-full flex justify-center">
-        {callStatus !== 'ACTIVE' ? (
-          <button className="relative btn-call" onClick={() => handleCall()}>
+      <div className="w-full flex flex-col items-center gap-4">
+        {error && (
+          <div className="text-red-500 text-center max-w-md p-2 bg-red-50 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {callStatus !== CallStatus.ACTIVE ? (
+          <button
+            className="relative btn-call"
+            onClick={handleCall}
+            disabled={
+              callStatus === CallStatus.REQUESTING_PERMISSION ||
+              callStatus === CallStatus.CONNECTING
+            }
+            aria-busy={
+              callStatus === CallStatus.REQUESTING_PERMISSION ||
+              callStatus === CallStatus.CONNECTING
+            }
+          >
             <span
               className={cn(
                 'absolute animate-ping rounded-full opacity-75',
-                callStatus !== 'CONNECTING' && 'hidden'
+                callStatus !== CallStatus.CONNECTING &&
+                  callStatus !== CallStatus.REQUESTING_PERMISSION &&
+                  'hidden'
               )}
             />
-
             <span className="relative">
-              {callStatus === 'INACTIVE' || callStatus === 'FINISHED'
-                ? 'Call'
-                : '. . .'}
+              {callStatus === CallStatus.INACTIVE ||
+              callStatus === CallStatus.FINISHED
+                ? 'Start Call'
+                : callStatus === CallStatus.REQUESTING_PERMISSION
+                ? 'Requesting Access...'
+                : 'Connecting...'}
             </span>
           </button>
         ) : (
-          <button className="btn-disconnect" onClick={() => handleDisconnect()}>
-            End
+          <button
+            className="btn-disconnect"
+            onClick={handleDisconnect}
+            aria-label="End call"
+          >
+            End Call
           </button>
         )}
       </div>
